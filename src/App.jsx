@@ -12,6 +12,8 @@ import DonationsPage from './pages/DonationsPage';
 import EventsPage from './pages/EventsPage';
 import VolunteersPage from './pages/VolunteersPage';
 import ContactPage from './pages/ContactPage';
+import LoginPage from './pages/LoginPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (
@@ -26,6 +28,8 @@ export default function App() {
           <Route path="/events" element={<EventsPage />} />
           <Route path="/volunteer" element={<VolunteersPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Footer />

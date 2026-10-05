@@ -2,6 +2,53 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const LibraryContext = createContext(null);
 
+const INITIAL_USERS = [
+  {
+    id: 1,
+    name: 'Siddharth Rao',
+    email: 'admin@socialshelf.org',
+    password: 'password123',
+    role: 'ADMIN',
+    badge: '👑 Head Librarian',
+    joinedDate: '2025-01-15',
+    borrowedCount: 18,
+    donatedCount: 12
+  },
+  {
+    id: 2,
+    name: 'Pooja Kulkarni',
+    email: 'reader@socialshelf.org',
+    password: 'password123',
+    role: 'READER',
+    badge: '📖 Avid Reader',
+    joinedDate: '2025-04-20',
+    borrowedCount: 6,
+    donatedCount: 3
+  },
+  {
+    id: 3,
+    name: 'Karan Malhotra',
+    email: 'volunteer@socialshelf.org',
+    password: 'password123',
+    role: 'VOLUNTEER',
+    badge: '🤝 Community Host',
+    joinedDate: '2025-06-10',
+    borrowedCount: 4,
+    donatedCount: 5
+  },
+  {
+    id: 4,
+    name: 'Arjun Deshmukh',
+    email: 'arjun@socialshelf.org',
+    password: 'password123',
+    role: 'READER',
+    badge: '📚 Student Member',
+    joinedDate: '2025-08-01',
+    borrowedCount: 2,
+    donatedCount: 1
+  }
+];
+
 const INITIAL_BOOKS = [
   {
     id: 1,
@@ -18,7 +65,7 @@ const INITIAL_BOOKS = [
   },
   {
     id: 2,
-    title: 'Clean Code: A Handbook of Agile Software Craftsmanship',
+    title: 'Clean Code: Agile Software Craftsmanship',
     author: 'Robert C. Martin',
     genre: 'Technology',
     cover: 'https://images.unsplash.com/photo-1532012164546-f432f2e3edd4?auto=format&fit=crop&q=80&w=600',
@@ -154,21 +201,34 @@ const INITIAL_RENTALS = [
     dueDate: '2026-10-12',
     status: 'ACTIVE',
     daysRemaining: 7,
-    fee: 'Free'
+    fee: 'Free',
+    borrowerName: 'Pooja Kulkarni'
   },
   {
     id: 'RNT-102',
-    bookTitle: 'Clean Code',
+    bookTitle: 'Clean Code: Agile Software Craftsmanship',
     author: 'Robert C. Martin',
     borrowDate: '2026-09-20',
     dueDate: '2026-10-18',
     status: 'ACTIVE',
     daysRemaining: 13,
-    fee: '₹20/wk'
+    fee: '₹20/wk',
+    borrowerName: 'Arjun Deshmukh'
   }
 ];
 
 export function LibraryProvider({ children }) {
+  // Database Collections
+  const [users, setUsers] = useState(() => {
+    const saved = localStorage.getItem('socialshelf_users');
+    return saved ? JSON.parse(saved) : INITIAL_USERS;
+  });
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('socialshelf_auth');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [books, setBooks] = useState(() => {
     const saved = localStorage.getItem('socialshelf_books');
     return saved ? JSON.parse(saved) : INITIAL_BOOKS;
@@ -187,15 +247,27 @@ export function LibraryProvider({ children }) {
   const [donations, setDonations] = useState(() => {
     const saved = localStorage.getItem('socialshelf_donations');
     return saved ? JSON.parse(saved) : [
-      { id: 1, title: 'The Pragmatic Programmer', author: 'Andy Hunt', donor: 'Pooja K.', date: '2026-09-30', status: 'VERIFIED' },
-      { id: 2, title: 'Deep Work', author: 'Cal Newport', donor: 'Rohan M.', date: '2026-10-02', status: 'ACCEPTED' },
-      { id: 3, title: 'Zero to One', author: 'Peter Thiel', donor: 'Sneha P.', date: '2026-10-04', status: 'IN_TRANSIT' }
+      { id: 1, title: 'The Pragmatic Programmer', author: 'Andy Hunt', donor: 'Pooja Kulkarni', date: '2026-09-30', status: 'VERIFIED' },
+      { id: 2, title: 'Deep Work', author: 'Cal Newport', donor: 'Rohan Mehta', date: '2026-10-02', status: 'ACCEPTED' },
+      { id: 3, title: 'Zero to One', author: 'Peter Thiel', donor: 'Sneha Patil', date: '2026-10-04', status: 'IN_TRANSIT' }
     ];
   });
 
   const [toastMsg, setToastMsg] = useState(null);
 
-  // Sync to localStorage
+  // Sync to Database (LocalStorage)
+  useEffect(() => {
+    localStorage.setItem('socialshelf_users', JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('socialshelf_auth', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('socialshelf_auth');
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     localStorage.setItem('socialshelf_books', JSON.stringify(books));
   }, [books]);
@@ -217,7 +289,74 @@ export function LibraryProvider({ children }) {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Rent / Borrow a Book
+  // --- Authentication Methods ---
+
+  const login = (email, password) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = users.find(u => u.email.toLowerCase() === normalizedEmail);
+
+    if (!user) {
+      throw new Error('User not found. Please register first or check your email.');
+    }
+    if (user.password !== password) {
+      throw new Error('Invalid password. For demo accounts, use password123.');
+    }
+
+    setCurrentUser(user);
+    showToast(`👋 Welcome back, ${user.name}! Logged in as ${user.badge}.`);
+    return user;
+  };
+
+  const demoLogin = (role) => {
+    const targetUser = users.find(u => u.role === role) || users[0];
+    setCurrentUser(targetUser);
+    showToast(`⚡ Switched session to ${targetUser.name} (${targetUser.badge})`);
+    return targetUser;
+  };
+
+  const register = (userData) => {
+    const normalizedEmail = userData.email.trim().toLowerCase();
+    const existing = users.find(u => u.email.toLowerCase() === normalizedEmail);
+    if (existing) {
+      throw new Error('An account with this email address already exists!');
+    }
+
+    const newUser = {
+      id: users.length + 1,
+      name: userData.name,
+      email: normalizedEmail,
+      password: userData.password,
+      role: userData.role || 'READER',
+      badge: userData.role === 'ADMIN' ? '👑 Head Librarian' : (userData.role === 'VOLUNTEER' ? '🤝 Community Host' : '📖 Member Reader'),
+      joinedDate: new Date().toISOString().split('T')[0],
+      borrowedCount: 0,
+      donatedCount: 0
+    };
+
+    setUsers(prev => [newUser, ...prev]);
+    setCurrentUser(newUser);
+    showToast(`🎉 Welcome to SocialShelf, ${newUser.name}! Your account has been registered.`);
+    return newUser;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    showToast('🔒 You have been logged out.');
+  };
+
+  // --- Admin User Database Management ---
+
+  const deleteUser = (userId) => {
+    if (currentUser?.id === userId) {
+      showToast('⚠️ You cannot delete your own active admin account!');
+      return;
+    }
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    showToast('🗑️ User removed from library database.');
+  };
+
+  // --- Book Operations ---
+
   const rentBook = (bookId, durationDays = 14) => {
     const book = books.find(b => b.id === bookId);
     if (!book || book.stock <= 0) {
@@ -228,10 +367,11 @@ export function LibraryProvider({ children }) {
     // Deduct stock
     setBooks(prev => prev.map(b => b.id === bookId ? { ...b, stock: b.stock - 1 } : b));
 
-    // Calculate due date
     const now = new Date();
     const dueDate = new Date();
     dueDate.setDate(now.getDate() + Number(durationDays));
+
+    const borrower = currentUser ? currentUser.name : 'Guest Member';
 
     const newRental = {
       id: `RNT-${Math.floor(100 + Math.random() * 900)}`,
@@ -241,28 +381,30 @@ export function LibraryProvider({ children }) {
       dueDate: dueDate.toISOString().split('T')[0],
       status: 'ACTIVE',
       daysRemaining: durationDays,
-      fee: book.rentalFee
+      fee: book.rentalFee,
+      borrowerName: borrower
     };
 
     setRentals(prev => [newRental, ...prev]);
-    showToast(`🎉 Successfully borrowed "${book.title}" for ${durationDays} days!`);
+
+    // Update user's count in database if logged in
+    if (currentUser) {
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, borrowedCount: (u.borrowedCount || 0) + 1 } : u));
+    }
+
+    showToast(`🎉 Borrowed "${book.title}" for ${durationDays} days!`);
     return true;
   };
 
-  // Return a Book
   const returnBook = (rentalId) => {
     const rental = rentals.find(r => r.id === rentalId);
     if (!rental) return;
 
-    // Restore stock in books
     setBooks(prev => prev.map(b => b.title === rental.bookTitle ? { ...b, stock: b.stock + 1 } : b));
-
-    // Remove or mark returned
     setRentals(prev => prev.filter(r => r.id !== rentalId));
-    showToast(`✅ "${rental.bookTitle}" has been returned to the library shelf.`);
+    showToast(`✅ "${rental.bookTitle}" returned to library shelves.`);
   };
 
-  // Renew a Book
   const renewBook = (rentalId) => {
     setRentals(prev => prev.map(r => {
       if (r.id === rentalId) {
@@ -276,30 +418,31 @@ export function LibraryProvider({ children }) {
       }
       return r;
     }));
-    showToast('🔄 Book rental extended by 7 days!');
+    showToast('🔄 Rental extended by 7 days!');
   };
 
-  // Donate a Book
   const donateBook = (donationData) => {
+    const donor = currentUser ? currentUser.name : (donationData.donorName || 'Generous Reader');
+
     const newDonation = {
       id: donations.length + 1,
       title: donationData.title,
       author: donationData.author,
-      donor: donationData.donorName || 'Generous Reader',
+      donor: donor,
       date: new Date().toISOString().split('T')[0],
       status: 'VERIFIED'
     };
 
     setDonations(prev => [newDonation, ...prev]);
 
-    // Also add to book catalog
+    // Add to books collection
     const newBook = {
       id: books.length + 1,
       title: donationData.title,
       author: donationData.author,
       genre: donationData.genre || 'General',
       cover: donationData.coverUrl || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600',
-      description: donationData.description || 'Donated with love by a community member to share the joy of reading.',
+      description: donationData.description || 'Donated with love to share the joy of reading.',
       stock: 1,
       pages: Number(donationData.pages) || 280,
       rentalFee: 'Free',
@@ -308,10 +451,30 @@ export function LibraryProvider({ children }) {
     };
 
     setBooks(prev => [newBook, ...prev]);
+
+    if (currentUser) {
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, donatedCount: (u.donatedCount || 0) + 1 } : u));
+    }
+
     showToast(`❤️ Thank you! "${donationData.title}" was added to our community shelves!`);
   };
 
-  // RSVP / Register for Event
+  const addBook = (newBookData) => {
+    const book = {
+      ...newBookData,
+      id: books.length + 1,
+      rating: 4.8,
+      isbn: newBookData.isbn || `978-${Math.floor(1000000000 + Math.random() * 9000000000)}`
+    };
+    setBooks(prev => [book, ...prev]);
+    showToast(`📚 "${book.title}" added to inventory.`);
+  };
+
+  const deleteBook = (bookId) => {
+    setBooks(prev => prev.filter(b => b.id !== bookId));
+    showToast('🗑️ Book removed from catalog.');
+  };
+
   const registerEvent = (eventId) => {
     setEvents(prev => prev.map(e => {
       if (e.id === eventId) {
@@ -335,16 +498,27 @@ export function LibraryProvider({ children }) {
 
   return (
     <LibraryContext.Provider value={{
+      users,
+      currentUser,
       books,
       rentals,
       events,
       donations,
+      login,
+      demoLogin,
+      register,
+      logout,
+      deleteUser,
       rentBook,
       returnBook,
       renewBook,
       donateBook,
+      addBook,
+      deleteBook,
       registerEvent,
-      showToast
+      showToast,
+      isAdmin: currentUser?.role === 'ADMIN',
+      isLoggedIn: currentUser !== null
     }}>
       {children}
       {toastMsg && <div className="toast">{toastMsg}</div>}

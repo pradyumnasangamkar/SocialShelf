@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useLibrary } from '../context/LibraryContext';
 
 export default function Navbar() {
-  const { rentals } = useLibrary();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { rentals, currentUser, logout, isAdmin } = useLibrary();
 
   return (
     <header className="navbar">
@@ -36,7 +35,7 @@ export default function Navbar() {
             </li>
             <li>
               <NavLink to="/donate" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                Donate Books
+                Donate
               </NavLink>
             </li>
             <li>
@@ -44,24 +43,47 @@ export default function Navbar() {
                 Events
               </NavLink>
             </li>
-            <li>
-              <NavLink to="/volunteer" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                Volunteer
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/contact" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                Contact
-              </NavLink>
-            </li>
+            {isAdmin && (
+              <li>
+                <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                  👑 Admin Hub
+                </NavLink>
+              </li>
+            )}
           </ul>
         </nav>
 
-        {/* Action Button */}
+        {/* User Session / Actions */}
         <div className="nav-actions">
-          <Link to="/donate" className="btn btn-primary btn-sm">
-            ❤️ Donate a Book
-          </Link>
+          {currentUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.2 }}>
+                  {currentUser.name}
+                </span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600 }}>
+                  {currentUser.badge}
+                </span>
+              </div>
+              <button 
+                onClick={logout} 
+                className="btn btn-secondary btn-sm"
+                title="Sign out of current account"
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.775rem' }}
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Link to="/login" className="btn btn-secondary btn-sm">
+                🔑 Sign In
+              </Link>
+              <Link to="/donate" className="btn btn-primary btn-sm">
+                ❤️ Donate
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>
